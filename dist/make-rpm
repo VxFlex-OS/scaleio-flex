@@ -1,0 +1,44 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+TOP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+JOB_NAME="DellEMC-ScaleIO-flexvolume"
+
+echo "SCRIPT DIR: ${SCRIPT_DIR}"
+echo "TOP_DIR:    ${TOP_DIR}"
+
+cd "${TOP_DIR}"
+
+testrel=$(/usr/bin/git diff HEAD~1 | awk '/[\t ]*\+[\t ]*Release/ {print "NEWREL"; exit 0 }')
+if [ "$testrel" != "NEWREL" ]; then
+    echo "There is no new release in the rpm spec files - do not rebuild."
+    #exit 0
+fi
+
+GIT=`which git`
+if [ ! -z "${GIT}" ]; then
+  git log --pretty=medium > "${TOP_DIR}/changes"
+else
+  echo "RPM not created from a git clone, no changes available" > "${TOP_DIR}/changes"
+fi
+
+rm -rf rpmbuild ${JOB_NAME}.tar.gz
+mkdir -p rpmbuild/{BUILD,RPMS,SOURCES/${JOB_NAME},SPECS,SRPMS}
+tar --exclude-vcs --exclude='rpmbuild' -cp * | (cd rpmbuild/SOURCES/${JOB_NAME} ; tar xp)
+cd ${TOP_DIR}/rpmbuild/SOURCES
+tar -cvzf ${JOB_NAME}.tar.gz ${JOB_NAME}
+cd ${TOP_DIR}
+
+cp dist/*.spec rpmbuild/SPECS/
+sed -i "s/^[\t ]*Source0:.*/Source0: ${JOB_NAME}.tar.gz/g" rpmbuild/SPECS/*.spec
+sed -i "s/^[\t ]*%setup.*/%setup -n ${JOB_NAME}/g" rpmbuild/SPECS/*.spec
+if [ ! -z "${GIT}" ]; then
+  echo "%changelog" >> rpmbuild/SPECS/*.spec
+  # --date=format:'%a %b %d %Y' not supported by latest git version for centOS
+  git log --pretty=format:"\$\$\$ %cd %an%n- %s%n%b%n" |
+    sed -r 's/[0-9]{2}:[0-9]{2}:[0-9]{2} //g' |
+    sed -r 's/-[0-9]{4} //g' |
+    sed 's/*/-/g' |
+    sed 's/\$\$\$/*/g' >> rpmbuild/SPECS/*.spec
+fi
+rpmbuild --define "_topdir %(pwd)/rpmbuild" -ba rpmbuild/SPECS/*.spec
