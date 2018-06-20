@@ -7,7 +7,7 @@ This driver allows users to consume ScaleIO storage, and provide persistent stor
 
 * ScaleIO volumes must be pre-allocated and mapped to all nodes in the cluster
 * Kubernetes/OpenShift's controller-managed attachment and detachment feature must be enabled.  This feature is enabled by default.  Ensure explicit actions were not taken to disable it.
-* For a given ScaleIO volume /dev/disk/by-id/emc-vol-``*``-``<volumeID>``, ``<volumeID>`` must be used as the volume specifier when creating persistent volumes, pods,or deployments.   More specifically... 
+* For a given ScaleIO volume /dev/disk/by-id/emc-vol-``*``-``<volumeID>``, ``<volumeID>`` must be used as the volume specifier when creating persistent volumes, pods,or deployments.   More specifically...
   * For PersistentVolume:
     * *.metadata.name*
     * *.spec.flexVolume.options.volumeID*
@@ -17,6 +17,8 @@ This driver allows users to consume ScaleIO storage, and provide persistent stor
   * For Deployment:
     * *.spec.template.spec.containers.volumeMounts.name*
     * *.spec.template.spec.volumes.name*
+  * This driver relies upon the OpenShift CLI utility (oc). This needs to be installed on all OpenShift nodes
+  * The example get-token.sh script uses a service account to set/get labels upon volumes. This requires that the service account have ``get`` and ``update`` access to OpenShift ``volumes``.
 
   This is a workaround to the issue mentioned at: https://github.com/kubernetes/kubernetes/issues/60046
 
@@ -65,4 +67,3 @@ This section covers some commonly encountered issues.  If they resemble what is 
     * ``origin-master-controllers: ... Verified volume is safe to detach for volume "<volumeID>" (UniqueName: "flexvolume-dell/scaleio/<volumeID>") on node ...``
     * ``origin-master-controllers: ... DetachVolume.Detach succeeded for volume "<volumeID>" (UniqueName: "flexvolume-dell/scaleio/<volumeID>") on node ...``
   * To address the issue, once encountered, reboot the node(s).
-
